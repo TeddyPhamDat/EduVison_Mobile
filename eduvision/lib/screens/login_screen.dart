@@ -13,7 +13,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _errorMessage;
@@ -43,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      
+
       if (mounted) {
         // Quay lại màn hình trước đó sau khi đăng nhập thành công
         Navigator.of(context).pop();
@@ -60,6 +60,42 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
   }
+
+  // Đăng nhập với Google
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authService.signInWithGoogle();
+
+      if (mounted) {
+        // Quay lại màn hình trước đó sau khi đăng nhập thành công
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      print('Google Sign In Error in UI: $e');
+      setState(() {
+        String errorMsg = e.toString().replaceAll('Exception: ', '');
+        if (errorMsg.contains('Google Sign In was cancelled')) {
+          _errorMessage = 'Đăng nhập Google đã bị hủy';
+        } else if (errorMsg.contains('Network error')) {
+          _errorMessage = 'Lỗi kết nối mạng. Vui lòng thử lại.';
+        } else if (errorMsg.contains('Backend error')) {
+          _errorMessage = 'Lỗi từ server. Vui lòng thử lại sau.';
+        } else {
+          _errorMessage = 'Lỗi đăng nhập Google: $errorMsg';
+        }
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   bool _validateForm() {
     if (_emailController.text.trim().isEmpty) {
       setState(() {
@@ -67,14 +103,14 @@ class _LoginScreenState extends State<LoginScreen> {
       });
       return false;
     }
-    
+
     if (_passwordController.text.isEmpty) {
       setState(() {
         _errorMessage = 'Vui lòng nhập mật khẩu';
       });
       return false;
     }
-    
+
     return true;
   }
 
@@ -95,7 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
-                
+
                 // Logo
                 Center(
                   child: Container(
@@ -113,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                  // Email field
+                // Email field
                 _buildCupertinoTextField(
                   controller: _emailController,
                   placeholder: 'Tên đăng nhập hoặc Email',
@@ -125,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Password field
                 _buildCupertinoTextField(
                   controller: _passwordController,
@@ -139,7 +175,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   suffix: CupertinoButton(
                     padding: EdgeInsets.zero,
                     child: Icon(
-                      _obscurePassword ? CupertinoIcons.eye : CupertinoIcons.eye_slash,
+                      _obscurePassword
+                          ? CupertinoIcons.eye
+                          : CupertinoIcons.eye_slash,
                       color: CupertinoColors.systemGrey,
                       size: 20,
                     ),
@@ -150,13 +188,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                 ),
-                
+
                 // Error message
                 if (_errorMessage != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 12.0),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: CupertinoColors.systemRed.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -171,9 +212,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Login button
                 SizedBox(
                   height: 50,
@@ -193,9 +234,61 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
+                // Google Sign In button
+                SizedBox(
+                  height: 50,
+                  child: CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: _isLoading ? null : _signInWithGoogle,
+                    child: Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: CupertinoColors.systemGrey4,
+                          width: 1,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Google icon (you can replace with actual Google icon)
+                          Container(
+                            width: 20,
+                            height: 20,
+                            decoration: const BoxDecoration(
+                              color: CupertinoColors.systemRed,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              CupertinoIcons.globe,
+                              size: 12,
+                              color: CupertinoColors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          _isLoading
+                              ? const CupertinoActivityIndicator()
+                              : const Text(
+                                  'Đăng nhập với Google',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: CupertinoColors.black,
+                                    fontFamily: '.SF Pro Text',
+                                  ),
+                                ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
                 // Forgot password
                 Center(
                   child: CupertinoButton(
@@ -216,9 +309,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                  // Divider
+                // Divider
                 Row(
                   children: [
                     Expanded(
@@ -245,9 +338,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Sign up button
                 Center(
                   child: CupertinoButton(
@@ -308,25 +401,15 @@ class _LoginScreenState extends State<LoginScreen> {
             )
           : null,
       suffix: suffix != null
-          ? Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: suffix,
-            )
+          ? Padding(padding: const EdgeInsets.only(right: 8), child: suffix)
           : null,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
         color: CupertinoColors.systemGrey6,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: CupertinoColors.systemGrey4,
-          width: 1,
-        ),
+        border: Border.all(color: CupertinoColors.systemGrey4, width: 1),
       ),
-      style: const TextStyle(
-        fontSize: 16,
-        fontFamily: '.SF Pro Text',
-      ),
+      style: const TextStyle(fontSize: 16, fontFamily: '.SF Pro Text'),
     );
   }
 }
-

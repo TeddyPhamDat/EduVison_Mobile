@@ -4,7 +4,7 @@ import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../widgets/eduvision_header.dart';
 import 'profile_settings_screen.dart';
-import 'login_screen_new.dart';
+import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -22,7 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadUserData();
-    
+
     // Listen for auth state changes
     _authService.authStateChanges.listen((user) {
       if (mounted) {
@@ -37,10 +37,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _isLoading = true;
     });
-    
+
     // Get current user
     _currentUser = _authService.currentUser;
-    
+
     setState(() {
       _isLoading = false;
     });
@@ -64,13 +64,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             isDestructiveAction: true,
             onPressed: () async {
               Navigator.of(context).pop();
-              
+
               setState(() {
                 _isLoading = true;
               });
-              
+
               await _authService.signOut();
-              
+
               setState(() {
                 _isLoading = false;
               });
@@ -88,7 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_currentUser == null) {
       return _buildSignInPrompt();
     }
-    
+
     // Signed in - show profile
     return CupertinoPageScaffold(
       navigationBar: const EduVisionHeader(
@@ -102,6 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+
   Widget _buildProfileContent() {
     return SingleChildScrollView(
       child: Column(
@@ -117,7 +118,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             child: Column(
-              children: [                // Profile Picture
+              children: [
+                // Profile Picture
                 Stack(
                   children: [
                     Container(
@@ -162,11 +164,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       right: 0,
                       bottom: 0,
                       child: CupertinoButton(
-                        padding: EdgeInsets.zero,                      onPressed: () {
+                        padding: EdgeInsets.zero,
+                        onPressed: () {
                           Navigator.push(
-                            context, 
+                            context,
                             CupertinoPageRoute(
-                              builder: (context) => const ProfileSettingsScreen(),
+                              builder: (context) =>
+                                  const ProfileSettingsScreen(),
                             ),
                           ).then((_) {
                             // Refresh user data when returning from settings
@@ -199,7 +203,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                
+
                 // User Name
                 Text(
                   _currentUser?.name ?? 'User',
@@ -209,7 +213,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: CupertinoColors.white,
                   ),
                 ),
-                  // User Email
+                // User Email
                 Text(
                   _currentUser?.email ?? '',
                   style: TextStyle(
@@ -217,11 +221,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: CupertinoColors.white.withOpacity(0.9),
                   ),
                 ),
-                
+
                 // Welcome message
                 const SizedBox(height: 16),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: CupertinoColors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
@@ -238,7 +245,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          
+
           // Stats Row
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -275,7 +282,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          
+
           // Profile Options
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
@@ -291,23 +298,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Profile Settings
                 _buildOptionTile(
                   icon: CupertinoIcons.person_crop_circle_fill,
                   title: 'Chỉnh sửa thông tin cá nhân',
                   onTap: () {
                     Navigator.push(
-                      context, 
+                      context,
                       CupertinoPageRoute(
                         builder: (context) => const ProfileSettingsScreen(),
                       ),
                     );
                   },
                 ),
-                
+
                 _buildDivider(),
-                
+
                 // Change Password
                 _buildOptionTile(
                   icon: CupertinoIcons.lock_fill,
@@ -316,9 +323,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // TODO: Navigate to change password screen
                   },
                 ),
-                
+
                 _buildDivider(),
-                
+
                 // Notification Settings
                 _buildOptionTile(
                   icon: CupertinoIcons.bell_fill,
@@ -327,19 +334,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // TODO: Navigate to notification settings
                   },
                 ),
-                
+
                 _buildDivider(),
-                
+
                 // App Settings
                 _buildOptionTile(
                   icon: CupertinoIcons.settings,
                   title: 'Cài đặt ứng dụng',
                   onTap: () {
                     // TODO: Navigate to app settings
-                  },                ),
-                
+                  },
+                ),
+
                 const SizedBox(height: 32),
-                
+
                 // Recent Activities
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -353,7 +361,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     _buildActivityItem(
                       icon: CupertinoIcons.play_circle,
                       title: 'Xem Video: Lý thuyết số học',
@@ -361,7 +369,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       iconColor: const Color(0xFF3B82F6),
                       iconBgColor: const Color(0xFFDBEAFE),
                     ),
-                    
+
                     _buildActivityItem(
                       icon: CupertinoIcons.doc_text,
                       title: 'Tải về: Đề thi thử Toán',
@@ -369,7 +377,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       iconColor: const Color(0xFF10B981),
                       iconBgColor: const Color(0xFFD1FAE5),
                     ),
-                    
+
                     _buildActivityItem(
                       icon: CupertinoIcons.check_mark,
                       title: 'Hoàn thành: Bài tập Hình học',
@@ -379,9 +387,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Sign Out Button
                 SizedBox(
                   width: double.infinity,
@@ -400,9 +408,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // App Version
                 Center(
                   child: Text(
@@ -455,7 +463,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              
+
               // Title and description
               const Text(
                 'Đăng nhập để truy cập hồ sơ',
@@ -469,14 +477,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 12),
               const Text(
                 'Vui lòng đăng nhập để xem và quản lý thông tin cá nhân của bạn',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF6B7280),
-                ),
+                style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 40),
-              
+
               // Login Button
               SizedBox(
                 width: double.infinity,
@@ -493,10 +498,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       final result = await Navigator.push(
                         context,
                         CupertinoPageRoute(
-                          builder: (context) => const LoginScreenNew(),
+                          builder: (context) => const LoginScreen(),
                         ),
                       );
-                      
+
                       if (result == true) {
                         // User signed in, refresh user data
                         _loadUserData();
@@ -539,20 +544,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: const Color(0xFFF3F4F6),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                icon,
-                color: const Color(0xFF8B5CF6),
-                size: 22,
-              ),
+              child: Icon(icon, color: const Color(0xFF8B5CF6), size: 22),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF1F2937),
-                ),
+                style: const TextStyle(fontSize: 16, color: Color(0xFF1F2937)),
               ),
             ),
             const Icon(
@@ -565,6 +563,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+
   Widget _buildDivider() {
     return Container(
       height: 1,
@@ -572,7 +571,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       color: const Color(0xFFE5E7EB),
     );
   }
-    Widget _buildStatItem({
+
+  Widget _buildStatItem({
     required IconData icon,
     required String value,
     required String label,
@@ -586,11 +586,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: const Color(0xFFF3F4F6),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(
-            icon,
-            color: const Color(0xFF8B5CF6),
-            size: 24,
-          ),
+          child: Icon(icon, color: const Color(0xFF8B5CF6), size: 24),
         ),
         const SizedBox(height: 8),
         Text(
@@ -603,15 +599,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF6B7280),
-          ),
+          style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
         ),
       ],
     );
   }
-  
+
   Widget _buildActivityItem({
     required IconData icon,
     required String title,
@@ -630,11 +623,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: iconBgColor,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              icon,
-              color: iconColor,
-              size: 20,
-            ),
+            child: Icon(icon, color: iconColor, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(

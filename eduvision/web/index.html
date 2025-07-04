@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -27,12 +28,96 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png" />
 
   <title>eduvision</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Google Identity Services - Same as ReactJS -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- Firebase SDK for FCM -->
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js"></script>
+
+  <script>
+    // Flutter Web <-> Google Identity Services Bridge
+    // This mimics ReactJS implementation exactly
+    window.flutterGoogleAuth = {
+      // Initialize like ReactJS
+      init: function (clientId, callback) {
+        if (typeof window.google === 'undefined') {
+          console.error('Google Identity Services not loaded');
+          return;
+        }
+
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: function (response) {
+            // response.credential is the ID token (JWT) - exactly like ReactJS
+            console.log('✅ Google GIS callback - ID Token received:', response.credential.substring(0, 50) + '...');
+            callback(response.credential);
+          }
+        });
+      },
+
+      // Trigger login popup like ReactJS
+      login: function () {
+        window.google.accounts.id.prompt();
+      },
+
+      // Get ID token directly (like ReactJS response.credential)
+      getIdToken: function (clientId) {
+        console.log('🚀 flutterGoogleAuth.getIdToken called with clientId:', clientId);
+
+        return new Promise((resolve, reject) => {
+          if (typeof window.google === 'undefined') {
+            console.error('❌ Google Identity Services not loaded');
+            reject('Google Identity Services not loaded');
+            return;
+          }
+
+          console.log('📋 Initializing Google Identity Services...');
+
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: function (response) {
+              // This is the ID Token we want! (exactly like ReactJS)
+              console.log('✅ Google callback triggered - ID Token:', response.credential.substring(0, 50) + '...');
+              resolve(response.credential);
+            }
+          });
+
+          // Trigger the popup (same as ReactJS flow)
+          console.log('📤 Triggering Google popup...');
+          window.google.accounts.id.prompt((notification) => {
+            console.log('📬 Google prompt notification:', notification);
+
+            if (notification.isNotDisplayed()) {
+              console.warn('⚠️ Google popup not displayed');
+              reject('Google Login popup was not displayed');
+            } else if (notification.isSkippedMoment()) {
+              console.warn('⚠️ Google popup was skipped');
+              reject('Google Login popup was skipped');
+            }
+          });
+        });
+      }
+    };
+
+    // Debug: Log when Google GIS is loaded
+    window.addEventListener('load', function () {
+      if (typeof window.google !== 'undefined') {
+        console.log('✅ Google Identity Services loaded successfully');
+      } else {
+        console.error('❌ Google Identity Services not found');
+      }
+    });
+  </script>
 </head>
+
 <body>
   <script src="flutter_bootstrap.js" async></script>
 </body>
+
 </html>

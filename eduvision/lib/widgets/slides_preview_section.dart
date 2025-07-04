@@ -1,14 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import '../models/lecture_video.dart';
-import '../models/slide.dart';
 
 class SlidesPreviewSection extends StatefulWidget {
   final LectureVideo video;
-  
-  const SlidesPreviewSection({
-    Key? key,
-    required this.video,
-  }) : super(key: key);
+
+  const SlidesPreviewSection({Key? key, required this.video}) : super(key: key);
 
   @override
   State<SlidesPreviewSection> createState() => _SlidesPreviewSectionState();
@@ -16,28 +12,25 @@ class SlidesPreviewSection extends StatefulWidget {
 
 class _SlidesPreviewSectionState extends State<SlidesPreviewSection> {
   int _currentSlideIndex = 0;
-  
+
   @override
   Widget build(BuildContext context) {
     if (widget.video.slides == null || widget.video.slides!.isEmpty) {
       return const SizedBox.shrink();
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 40),
-        
+
         Text(
           'Slides bài giảng',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         Container(
           height: 300,
           decoration: BoxDecoration(
@@ -53,48 +46,45 @@ class _SlidesPreviewSectionState extends State<SlidesPreviewSection> {
           ),
           child: _buildSlideViewer(),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CupertinoButton(
               child: const Icon(CupertinoIcons.back),
               onPressed: _currentSlideIndex > 0
-                ? () {
-                    setState(() {
-                      _currentSlideIndex--;
-                    });
-                  }
-                : null,
+                  ? () {
+                      setState(() {
+                        _currentSlideIndex--;
+                      });
+                    }
+                  : null,
             ),
             Text(
               'Slide ${_currentSlideIndex + 1} / ${widget.video.slides!.length}',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             CupertinoButton(
               child: const Icon(CupertinoIcons.forward),
               onPressed: _currentSlideIndex < widget.video.slides!.length - 1
-                ? () {
-                    setState(() {
-                      _currentSlideIndex++;
-                    });
-                  }
-                : null,
+                  ? () {
+                      setState(() {
+                        _currentSlideIndex++;
+                      });
+                    }
+                  : null,
             ),
           ],
         ),
       ],
     );
   }
-  
+
   Widget _buildSlideViewer() {
     final currentSlide = widget.video.slides![_currentSlideIndex];
-    
+
     return Stack(
       children: [
         if (currentSlide.imageUrl != null)
@@ -140,10 +130,7 @@ class _SlidesPreviewSectionState extends State<SlidesPreviewSection> {
             ),
             child: Text(
               currentSlide.content,
-              style: TextStyle(
-                fontSize: 14,
-                color: CupertinoColors.black,
-              ),
+              style: TextStyle(fontSize: 14, color: CupertinoColors.black),
             ),
           ),
         ),
@@ -151,4 +138,3 @@ class _SlidesPreviewSectionState extends State<SlidesPreviewSection> {
     );
   }
 }
-

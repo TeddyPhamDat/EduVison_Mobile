@@ -1,10 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../models/generated_content.dart';
-import '../services/content_storage_service.dart';
-import '../widgets/eduvision_header.dart';
-import 'content_viewer_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../services/education_service.dart';
 
 class ContentHistoryScreen extends StatefulWidget {
   const ContentHistoryScreen({Key? key}) : super(key: key);
@@ -14,11 +11,11 @@ class ContentHistoryScreen extends StatefulWidget {
 }
 
 class _ContentHistoryScreenState extends State<ContentHistoryScreen> {
-  final ContentStorageService _contentStorageService = ContentStorageService();
-  List<GeneratedContent> _contentHistory = [];
-  List<GeneratedContent> _favoriteContent = [];
+  final EducationService _educationService = EducationService();
+  List<Map<String, dynamic>> _slides = [];
+  List<Map<String, dynamic>> _videos = [];
   bool _isLoading = true;
-  int _selectedTab = 0; // 0 for History, 1 for Favorites
+  int _selectedTab = 0; // 0 for Slides, 1 for Videos
 
   @override
   void initState() {
@@ -32,38 +29,31 @@ class _ContentHistoryScreenState extends State<ContentHistoryScreen> {
     });
 
     try {
-      final history = await _contentStorageService.getContentHistory();
-      final favorites = await _contentStorageService.getFavoriteContent();
+      final content = await _educationService.getUserContent();
 
       setState(() {
-        _contentHistory = history;
-        _favoriteContent = favorites;
+        _slides = content['slides'] ?? [];
+        _videos = content['videos'] ?? [];
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
+      _showErrorMessage('Không thể tải nội dung: $e');
     }
   }
 
-  Future<void> _toggleFavorite(String contentId) async {
+  Future<void> _openUrl(String url) async {
     try {
-      await _contentStorageService.toggleFavorite(contentId);
-      await _loadContent(); // Refresh content after toggling
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        _showErrorMessage('Không thể mở URL: $url');
+      }
     } catch (e) {
-      // Show error message
-      _showErrorMessage(e.toString());
-    }
-  }
-
-  Future<void> _deleteContent(String contentId) async {
-    try {
-      await _contentStorageService.deleteContent(contentId);
-      await _loadContent(); // Refresh content after deleting
-    } catch (e) {
-      // Show error message
-      _showErrorMessage(e.toString());
+      _showErrorMessage('Lỗi khi mở URL: $e');
     }
   }
 
@@ -83,110 +73,63 @@ class _ContentHistoryScreenState extends State<ContentHistoryScreen> {
     );
   }
 
-  void _confirmDelete(GeneratedContent content) {
-    showCupertinoDialog(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: const Text('Xác nhận xóa'),
-        content: Text('Bạn có chắc chắn muốn xóa "${content.title}" khỏi lịch sử?'),
-        actions: [
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            child: const Text('Xóa'),
-            onPressed: () {
-              Navigator.pop(context);
-              _deleteContent(content.id);
-            },
-          ),
-          CupertinoDialogAction(
-            child: const Text('Hủy'),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
-      ),
-    );
+  String _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'success';
+      case 'failed':
+        return 'error';
+      case 'processing':
+        return 'warning';
+      default:
+        return 'info';
+    }
+  }
+
+  String _getStatusText(String status) {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'Hoàn thành';
+      case 'failed':
+        return 'Thất bại';
+      case 'processing':
+        return 'Đang xử lý';
+      default:
+        return status;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: const EduVisionHeader(
-        title: 'Nội dung đã tạo',
-        showBackButton: true,
+      navigationBar: const CupertinoNavigationBar(
+        middle: Text(
+          'Nội dung đã tạo',
+          style: TextStyle(fontFamily: '.SF Pro Display'),
+        ),
       ),
       child: SafeArea(
         child: Column(
           children: [
-            // Tab Selector
+            // Tab bar
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
+                color: CupertinoColors.systemGrey6,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedTab = 0;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: _selectedTab == 0
-                              ? const Color(0xFF6C5CE7)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Lịch sử',
-                          style: TextStyle(
-                            color: _selectedTab == 0
-                                ? Colors.white
-                                : const Color(0xFF6B7280),
-                            fontWeight: FontWeight.w600,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedTab = 1;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: _selectedTab == 1
-                              ? const Color(0xFF6C5CE7)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Yêu thích',
-                          style: TextStyle(
-                            color: _selectedTab == 1
-                                ? Colors.white
-                                : const Color(0xFF6B7280),
-                            fontWeight: FontWeight.w600,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              child: CupertinoSlidingSegmentedControl<int>(
+                children: const {0: Text('Slides'), 1: Text('Videos')},
+                onValueChanged: (value) {
+                  setState(() {
+                    _selectedTab = value ?? 0;
+                  });
+                },
+                groupValue: _selectedTab,
               ),
             ),
-            
-            // Content List
+
+            // Content
             Expanded(
               child: _isLoading
                   ? const Center(child: CupertinoActivityIndicator())
@@ -199,35 +142,43 @@ class _ContentHistoryScreenState extends State<ContentHistoryScreen> {
   }
 
   Widget _buildContentList() {
-    final List<GeneratedContent> contentToShow = 
-        _selectedTab == 0 ? _contentHistory : _favoriteContent;
-    
+    final List<Map<String, dynamic>> contentToShow = _selectedTab == 0
+        ? _slides
+        : _videos;
+
     if (contentToShow.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              CupertinoIcons.doc_text_search,
-              size: 70,
-              color: Color(0xFFD1D5DB),
+            Icon(
+              _selectedTab == 0
+                  ? CupertinoIcons.doc_text
+                  : CupertinoIcons.play_rectangle,
+              size: 64,
+              color: CupertinoColors.systemGrey3,
             ),
             const SizedBox(height: 16),
             Text(
-              _selectedTab == 0
-                  ? 'Không có nội dung nào trong lịch sử'
-                  : 'Không có nội dung nào được đánh dấu yêu thích',
+              _selectedTab == 0 ? 'Chưa có slides nào' : 'Chưa có videos nào',
               style: const TextStyle(
-                fontSize: 16,
-                color: Color(0xFF6B7280),
+                fontSize: 18,
+                color: CupertinoColors.systemGrey,
               ),
-              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Hãy tạo nội dung mới để xem ở đây',
+              style: TextStyle(
+                fontSize: 14,
+                color: CupertinoColors.systemGrey2,
+              ),
             ),
           ],
         ),
       );
     }
-    
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: contentToShow.length,
@@ -238,241 +189,114 @@ class _ContentHistoryScreenState extends State<ContentHistoryScreen> {
     );
   }
 
-  Widget _buildContentCard(GeneratedContent content) {
-    final DateFormat dateFormat = DateFormat('dd/MM/yyyy HH:mm');
-    final String formattedDate = dateFormat.format(content.createdAt);
-    
+  Widget _buildContentCard(Map<String, dynamic> content) {
+    final String status = content['status'] ?? 'Unknown';
+    final String statusText = _getStatusText(status);
+    final String title = content['promptContent'] ?? 'Untitled';
+    final String type = content['type'] ?? '';
+    final String url = content['url'] ?? '';
+    final int id = content['slideId'] ?? content['videoId'] ?? 0;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: CupertinoColors.systemBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: CupertinoColors.systemGrey4, width: 1),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Content info section
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title and Favorite icon
-                Row(
-                  children: [
-                    // Content type icon
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        content.contentType == 'slides'
-                            ? CupertinoIcons.doc_text
-                            : CupertinoIcons.play_rectangle,
-                        color: const Color(0xFF6C5CE7),
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    
-                    // Title and date
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            content.title,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1F2937),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            formattedDate,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    // Favorite button
-                    GestureDetector(
-                      onTap: () => _toggleFavorite(content.id),
-                      child: Icon(
-                        content.isFavorite
-                            ? CupertinoIcons.heart_fill
-                            : CupertinoIcons.heart,
-                        color: content.isFavorite
-                            ? const Color(0xFFEF4444)
-                            : const Color(0xFF9CA3AF),
-                        size: 24,
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 12),
-                
-                // Subject and grade
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEDE9FE),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        content.subject,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF6C5CE7),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE0F2FE),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        'Lớp ${content.grade}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF0EA5E9),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 12),
-                
-                // Chapter
-                Text(
-                  content.chapter,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF4B5563),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+      child: CupertinoListTile(
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: _selectedTab == 0
+                ? CupertinoColors.activeBlue.withOpacity(0.1)
+                : CupertinoColors.systemPurple.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
           ),
-          
-          // Actions section
-          Container(
-            decoration: const BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: Color(0xFFE5E7EB),
-                  width: 1,
+          child: Icon(
+            _selectedTab == 0
+                ? CupertinoIcons.doc_text_fill
+                : CupertinoIcons.play_rectangle_fill,
+            color: _selectedTab == 0
+                ? CupertinoColors.activeBlue
+                : CupertinoColors.systemPurple,
+            size: 24,
+          ),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (type.isNotEmpty)
+              Text(
+                'Môn: $type',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: CupertinoColors.systemGrey,
                 ),
               ),
-            ),
-            child: Row(
+            Row(
               children: [
-                // View button
-                Expanded(
-                  child: CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(
-                          CupertinoIcons.eye,
-                          size: 18,
-                          color: Color(0xFF6C5CE7),
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Xem',
-                          style: TextStyle(
-                            color: Color(0xFF6C5CE7),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(status) == 'success'
+                        ? CupertinoColors.systemGreen.withOpacity(0.1)
+                        : _getStatusColor(status) == 'error'
+                        ? CupertinoColors.systemRed.withOpacity(0.1)
+                        : CupertinoColors.systemOrange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _getStatusColor(status) == 'success'
+                          ? CupertinoColors.systemGreen
+                          : _getStatusColor(status) == 'error'
+                          ? CupertinoColors.systemRed
+                          : CupertinoColors.systemOrange,
+                      fontWeight: FontWeight.w500,
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        CupertinoPageRoute(
-                          builder: (context) => ContentViewerScreen(
-                            url: content.url,
-                            title: content.title,
-                            contentType: content.contentType == 'slides' ? 'Slides' : 'Video',
-                          ),
-                        ),
-                      );
-                    },
                   ),
                 ),
-                
-                // Vertical divider
-                Container(
-                  height: 30,
-                  width: 1,
-                  color: const Color(0xFFE5E7EB),
-                ),
-                
-                // Delete button
-                Expanded(
-                  child: CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(
-                          CupertinoIcons.delete,
-                          size: 18,
-                          color: Color(0xFFEF4444),
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Xóa',
-                          style: TextStyle(
-                            color: Color(0xFFEF4444),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    onPressed: () {
-                      _confirmDelete(content);
-                    },
+                const Spacer(),
+                Text(
+                  'ID: $id',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: CupertinoColors.systemGrey2,
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
+        trailing: status.toLowerCase() == 'completed' && url.isNotEmpty
+            ? CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () => _openUrl(url),
+                child: const Icon(
+                  CupertinoIcons.square_arrow_up_on_square,
+                  color: CupertinoColors.activeBlue,
+                ),
+              )
+            : const Icon(
+                CupertinoIcons.info_circle,
+                color: CupertinoColors.systemGrey3,
+              ),
+        onTap: status.toLowerCase() == 'completed' && url.isNotEmpty
+            ? () => _openUrl(url)
+            : null,
       ),
     );
   }
