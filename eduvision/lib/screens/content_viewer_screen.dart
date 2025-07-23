@@ -44,7 +44,7 @@ class _ContentViewerScreenState extends State<ContentViewerScreen> {
             });
           },
           onWebResourceError: (WebResourceError error) {
-            debugPrint('WebView error: ${error.description}');
+            // WebView error handling
           },
         ),
       );

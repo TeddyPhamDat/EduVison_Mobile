@@ -3,16 +3,21 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services") // Removed 'apply false' để kích hoạt plugin
 }
 
 android {
+
+    ndkVersion = "27.0.12077973"
+
     namespace = "com.example.eduvision"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    // ndkVersion = flutter.ndkVersion // Remove this line to avoid override
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -28,12 +33,6 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        
-        ndk {
-            abiFilters.add("x86_64")
-            abiFilters.add("arm64-v8a")
-            abiFilters.add("armeabi-v7a")
-        }
     }
 
     buildTypes {
@@ -48,3 +47,12 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    // Thêm dependency cho Google Sign In
+    add("implementation", "com.google.android.gms:play-services-auth:20.7.0")
+}
+
+// Đã khai báo plugin ở trên, không cần apply lại
+// apply(plugin = "com.google.gms.google-services")

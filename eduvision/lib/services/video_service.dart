@@ -39,7 +39,7 @@ class VideoService {
         _videos.addAll(videos);
       }
     } catch (e) {
-      print('Lỗi khi tải video từ local storage: $e');
+      // Error handled gracefully
     }
   }
 
@@ -50,7 +50,7 @@ class VideoService {
       final videosJson = jsonEncode(_videos.map((video) => video.toJson()).toList());
       await prefs.setString(_videosStorageKey, videosJson);
     } catch (e) {
-      print('Lỗi khi lưu video vào local storage: $e');
+      // Error handled silently
     }
   }  // Tạo video bài giảng mới
   Future<LectureVideo> createVideo({
@@ -110,6 +110,13 @@ class VideoService {
         content: 'Nội dung cho slide ${i + 1} của ${_videos[index].topic}',
         imageUrl: 'https://example.com/images/slide_$i.jpg',
         slideNumber: i + 1,
+        // Add API format fields with null values for compatibility
+        slideId: null,
+        promptId: null,
+        type: _videos[index].subject,
+        url: null,
+        status: "Completed",
+        promptContent: 'Slide ${i + 1} của ${_videos[index].topic}',
       ),
     );
 

@@ -6,6 +6,7 @@ import '../widgets/eduvision_header.dart';
 import 'profile_settings_screen.dart';
 import 'login_screen.dart';
 
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
@@ -345,6 +346,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // TODO: Navigate to app settings
                   },
                 ),
+                
+                _buildDivider(),
 
                 const SizedBox(height: 32),
 
@@ -495,17 +498,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: CupertinoButton(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     onPressed: () async {
-                      final result = await Navigator.push(
+                      // Navigate to login page using CupertinoPageRoute instead of Named Route
+                      await Navigator.push(
                         context,
                         CupertinoPageRoute(
                           builder: (context) => const LoginScreen(),
                         ),
                       );
-
-                      if (result == true) {
-                        // User signed in, refresh user data
-                        _loadUserData();
-                      }
+                      
+                      // Refresh data after return
+                      _loadUserData();
                     },
                     child: const Text(
                       'Đăng nhập',

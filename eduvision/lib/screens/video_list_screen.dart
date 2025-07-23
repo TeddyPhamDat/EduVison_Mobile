@@ -1,10 +1,16 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/lecture_video.dart';
 import '../services/video_service.dart';
 import '../widgets/video_card.dart';
 import '../widgets/subject_filter.dart';
-import 'create_video_screen.dart';
+import '../widgets/eduvision_header.dart';
+import 'content_generation_screen.dart';
 import 'video_result_screen.dart';
+import 'content_viewer_screen.dart';
 
 class VideoListScreen extends StatefulWidget {
   const VideoListScreen({Key? key}) : super(key: key);
@@ -100,7 +106,7 @@ class _VideoListScreenState extends State<VideoListScreen> {
             Navigator.push(
               context,
               CupertinoPageRoute(
-                builder: (context) => const CreateVideoScreen(),
+                builder: (context) => const ContentGenerationScreen(initialMode: 'video'),
               ),
             );
           },
@@ -238,7 +244,7 @@ class _VideoListScreenState extends State<VideoListScreen> {
                   Navigator.push(
                     context,
                     CupertinoPageRoute(
-                      builder: (context) => const CreateVideoScreen(),
+                      builder: (context) => const ContentGenerationScreen(initialMode: 'video'),
                     ),
                   );
                 },

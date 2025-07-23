@@ -1,0 +1,76 @@
+{
+  "project_info": {
+    "project_number": "859564462424",
+    "project_id": "eduvision-7d79b",
+    "storage_bucket": "eduvision-7d79b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:859564462424:android:32f23709f75107b5c1d52d",
+        "android_client_info": {
+          "package_name": "com.example.eduvision"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "859564462424-o8iufugaok7ap1t0mrqg31k85odp4icr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.eduvision",
+            "certificate_hash": "834ea04af80280f90854398df677f741e143b356"
+          }
+        },
+        {
+          "client_id": "859564462424-a81d1ieeimchlh52a2mcmdriip828ju2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBkDf7cvCTRWm0heLkzQfFoJU9NegKgAoc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "859564462424-a81d1ieeimchlh52a2mcmdriip828ju2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:859564462424:android:9ada28a27b85c355c1d52d",
+        "android_client_info": {
+          "package_name": "com.example.eduvision_fixed"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "859564462424-a81d1ieeimchlh52a2mcmdriip828ju2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBkDf7cvCTRWm0heLkzQfFoJU9NegKgAoc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "859564462424-a81d1ieeimchlh52a2mcmdriip828ju2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

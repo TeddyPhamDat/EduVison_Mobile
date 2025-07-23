@@ -1,11 +1,12 @@
 import 'dart:convert';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 import 'dart:developer' as developer;
 import '../utils/notification_utils.dart';
+import '../config/api_config.dart';
+import 'auth_service.dart' show HttpHelper;
+import 'package:firebase_core/firebase_core.dart';
 import '../firebase_options.dart';
 
 class FCMService {
@@ -42,12 +43,12 @@ class FCMService {
     if (_isInitialized) return;
 
     try {
-      developer.log('Initializing Firebase...', name: 'FCMService');
+      // Initialize FCM Service
 
-      // Initialize Firebase
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      // Firebase should already be initialized in main.dart
+      // await Firebase.initializeApp(
+      //   options: DefaultFirebaseOptions.currentPlatform,
+      // );
 
       // Initialize Firebase Messaging
       _firebaseMessaging = FirebaseMessaging.instance;
@@ -68,12 +69,9 @@ class FCMService {
       _setupTokenRefreshListener();
 
       _isInitialized = true;
-      developer.log('FCM Service initialized successfully', name: 'FCMService');
+      // FCM Service initialized successfully
     } catch (e) {
-      developer.log(
-        'FCM Service initialization failed: $e',
-        name: 'FCMService',
-      );
+      // FCM Service initialization failed
       rethrow;
     }
   }
@@ -106,7 +104,7 @@ class FCMService {
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
-    developer.log('Local notifications initialized', name: 'FCMService');
+    // Log removed for production;
   }
 
   /// Request FCM permissions
@@ -114,6 +112,16 @@ class FCMService {
     if (_firebaseMessaging == null) return;
 
     try {
+      // Log removed for production;
+      
+      // Check current authorization status first
+      final initialSettings = await _firebaseMessaging!.getNotificationSettings();
+      developer.log(
+        'Initial FCM Permission status: ${initialSettings.authorizationStatus}',
+        name: 'FCMService',
+      );
+      
+      // Request permissions
       NotificationSettings settings = await _firebaseMessaging!
           .requestPermission(
             alert: true,
@@ -126,12 +134,21 @@ class FCMService {
           );
 
       developer.log(
-        'FCM Permission status: ${settings.authorizationStatus}',
+        'FCM Permission status after request: ${settings.authorizationStatus}',
         name: 'FCMService',
       );
+      
+      // Check if permissions are denied
+      if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        // Log removed for production;
+      } else if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        // Log removed for production;
+      } else {
+        // Log removed for production;
+      }
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        developer.log('User granted permission', name: 'FCMService');
+        // Log removed for production;
       } else if (settings.authorizationStatus ==
           AuthorizationStatus.provisional) {
         developer.log(
@@ -145,19 +162,19 @@ class FCMService {
         );
       }
     } catch (e) {
-      developer.log('Error requesting permissions: $e', name: 'FCMService');
+      // Log removed for production;
     }
   }
 
   /// Get FCM token
   Future<String?> _getFCMToken() async {
     if (_firebaseMessaging == null) {
-      developer.log('Firebase Messaging is null', name: 'FCMService');
+      // Log removed for production;
       return null;
     }
 
     try {
-      developer.log('Requesting FCM token...', name: 'FCMService');
+      // Log removed for production;
 
       // Use VAPID key like in JavaScript implementation
       _fcmToken = await _firebaseMessaging!.getToken(
@@ -173,12 +190,12 @@ class FCMService {
         await _saveFCMToken(_fcmToken!);
         return _fcmToken;
       } else {
-        developer.log('FCM Token is null after request', name: 'FCMService');
+        // Log removed for production;
         return null;
       }
     } catch (e) {
-      developer.log('Error getting FCM token: $e', name: 'FCMService');
-      developer.log('Error type: ${e.runtimeType}', name: 'FCMService');
+      // Log removed for production;
+      // Log removed for production;
       return null;
     }
   }
@@ -188,9 +205,9 @@ class FCMService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('fcm_token', token);
-      developer.log('FCM token saved to storage', name: 'FCMService');
+      // Log removed for production;
     } catch (e) {
-      developer.log('Error saving FCM token: $e', name: 'FCMService');
+      // Log removed for production;
     }
   }
 
@@ -201,11 +218,11 @@ class FCMService {
       final token = prefs.getString('fcm_token');
       if (token != null) {
         _fcmToken = token;
-        developer.log('FCM token loaded from storage', name: 'FCMService');
+        // Log removed for production;
       }
       return token;
     } catch (e) {
-      developer.log('Error loading FCM token: $e', name: 'FCMService');
+      // Log removed for production;
       return null;
     }
   }
@@ -245,7 +262,7 @@ class FCMService {
       }
     });
 
-    developer.log('Message handlers setup complete', name: 'FCMService');
+    // Log removed for production;
   }
 
   /// Setup token refresh listener
@@ -253,7 +270,7 @@ class FCMService {
     if (_firebaseMessaging == null) return;
 
     _firebaseMessaging!.onTokenRefresh.listen((String newToken) {
-      developer.log('FCM Token refreshed: $newToken', name: 'FCMService');
+      // Log removed for production;
 
       _fcmToken = newToken;
       _saveFCMToken(newToken);
@@ -309,56 +326,110 @@ class FCMService {
         payload: jsonEncode(message.data),
       );
 
-      developer.log('Local notification shown', name: 'FCMService');
+      // Log removed for production;
     } catch (e) {
-      developer.log('Error showing local notification: $e', name: 'FCMService');
+      // Log removed for production;
     }
   }
 
   /// Process notification data and call appropriate callbacks (like JavaScript useEffect)
   void _processNotificationData(Map<String, dynamic> data) {
     try {
-      developer.log('Processing notification data: $data', name: 'FCMService');
+      // Log removed for production;
 
       final type = data['type'] as String?;
       final error = data['error'] as String?;
+      final slideUrl = data['slideUrl'] as String?;
+      final videoUrl = data['videoUrl'] as String?;
+
+      developer.log(
+        'Notification details - Type: $type, SlideUrl: $slideUrl, VideoUrl: $videoUrl',
+        name: 'FCMService',
+      );
 
       switch (type) {
         case 'slide_generated':
           developer.log(
-            'Calling onSlideGenerated callback',
+            'Calling onSlideGenerated callback with slideUrl: $slideUrl',
             name: 'FCMService',
           );
+          
+          // Show UI notification if not already shown by foreground handler
+          _showUINotification(
+            "Slide đã sẵn sàng!",
+            "Slide mới đã được tạo thành công. Nhấn để xem chi tiết.",
+            isSuccess: true,
+          );
+          
           if (onSlideGenerated != null) {
-            onSlideGenerated!(data);
+            Map<String, dynamic> enrichedData = Map.from(data);
+            if (!enrichedData.containsKey('slideUrl') && slideUrl != null) {
+              enrichedData['slideUrl'] = slideUrl;
+            }
+            onSlideGenerated!(enrichedData);
           }
           break;
 
         case 'video_generated':
           developer.log(
-            'Calling onVideoGenerated callback',
+            'Calling onVideoGenerated callback with videoUrl: $videoUrl',
             name: 'FCMService',
           );
+          
+          // Show UI notification if not already shown by foreground handler
+          _showUINotification(
+            "Video đã sẵn sàng!",
+            "Video mới đã được tạo thành công. Nhấn để xem chi tiết.",
+            isSuccess: true,
+          );
+          
           if (onVideoGenerated != null) {
-            onVideoGenerated!(data);
+            Map<String, dynamic> enrichedData = Map.from(data);
+            if (!enrichedData.containsKey('videoUrl') && videoUrl != null) {
+              enrichedData['videoUrl'] = videoUrl;
+            }
+            onVideoGenerated!(enrichedData);
           }
           break;
 
         case 'slide_and_video_generated':
           developer.log(
-            'Calling onSlideAndVideoGenerated callback',
+            'Calling onSlideAndVideoGenerated callback with slideUrl: $slideUrl, videoUrl: $videoUrl',
             name: 'FCMService',
           );
+          
+          // Show UI notification if not already shown by foreground handler
+          _showUINotification(
+            "Nội dung đã sẵn sàng!",
+            "Slide và video mới đã được tạo thành công. Nhấn để xem chi tiết.",
+            isSuccess: true,
+          );
+          
           if (onSlideAndVideoGenerated != null) {
-            onSlideAndVideoGenerated!(data);
+            Map<String, dynamic> enrichedData = Map.from(data);
+            if (!enrichedData.containsKey('slideUrl') && slideUrl != null) {
+              enrichedData['slideUrl'] = slideUrl;
+            }
+            if (!enrichedData.containsKey('videoUrl') && videoUrl != null) {
+              enrichedData['videoUrl'] = videoUrl;
+            }
+            onSlideAndVideoGenerated!(enrichedData);
           }
           break;
 
         case 'generation_failed':
           developer.log(
-            'Calling onGenerationFailed callback',
+            'Calling onGenerationFailed callback with error: $error',
             name: 'FCMService',
           );
+          
+          // Show UI notification for failure
+          _showUINotification(
+            "Tạo nội dung thất bại",
+            error ?? "Không thể tạo nội dung. Vui lòng thử lại sau.",
+            isSuccess: false,
+          );
+          
           if (onGenerationFailed != null) {
             onGenerationFailed!(error, data.toString());
           }
@@ -398,7 +469,7 @@ class FCMService {
         onShowUINotification!(title, message, isSuccess: isSuccess);
       }
     } catch (e) {
-      developer.log('Error showing UI notification: $e', name: 'FCMService');
+      // Log removed for production;
     }
   }
 
@@ -425,74 +496,120 @@ class FCMService {
 
   /// Handle notification data
   void _handleNotificationData(Map<String, dynamic> data) {
-    developer.log('Handling notification data: $data', name: 'FCMService');
+    // Log removed for production;
 
     // Extract notification data
     final type = data['type'] as String?;
-    final subjectId = data['subjectId'] as String?;
-    final chapterId = data['chapterId'] as String?;
+    final subject = data['subject'] as String?;
+    final chapter = data['chapter'] as String?;
     final slideUrl = data['slideUrl'] as String?;
     final videoUrl = data['videoUrl'] as String?;
     final error = data['error'] as String?;
+    // promptId is available in data['promptId'] if needed
+
+    // Log removed for production;
+    // Log removed for production;
+    // Log removed for production;
 
     switch (type) {
       case 'slide_generated':
         developer.log(
-          'Slide generated - Subject: $subjectId, Chapter: $chapterId',
+          'Slide generated - Subject: $subject, Chapter: $chapter',
           name: 'FCMService',
         );
         if (slideUrl != null) {
-          developer.log('Slide URL: $slideUrl', name: 'FCMService');
-          // Navigate to slide or open URL
+          // Log removed for production;
+          
+          // TODO: Navigation to content viewer screen with slideUrl
+          // Example: Navigator.of(context).pushNamed('/content-viewer', arguments: {'slideUrl': slideUrl});
+          
+          // For now, just show a notification
+          _showUINotification(
+            'Slide đã được tạo',
+            'Nhấn vào để xem slide mới của bạn: $subject - Bài $chapter',
+            isSuccess: true,
+          );
         }
         break;
 
       case 'video_generated':
         developer.log(
-          'Video generated - Subject: $subjectId, Chapter: $chapterId',
+          'Video generated - Subject: $subject, Chapter: $chapter',
           name: 'FCMService',
         );
         if (videoUrl != null) {
-          developer.log('Video URL: $videoUrl', name: 'FCMService');
-          // Navigate to video or open URL
+          // Log removed for production;
+          
+          // TODO: Navigation to video viewer screen with videoUrl
+          // Example: Navigator.of(context).pushNamed('/video-viewer', arguments: {'videoUrl': videoUrl});
+          
+          // For now, just show a notification
+          _showUINotification(
+            'Video đã được tạo',
+            'Nhấn vào để xem video mới của bạn: $subject - Bài $chapter',
+            isSuccess: true,
+          );
         }
         break;
 
       case 'slide_and_video_generated':
         developer.log(
-          'Slide and Video generated - Subject: $subjectId, Chapter: $chapterId',
+          'Slide and Video generated - Subject: $subject, Chapter: $chapter',
           name: 'FCMService',
         );
-        if (slideUrl != null)
-          developer.log('Slide URL: $slideUrl', name: 'FCMService');
-        if (videoUrl != null)
-          developer.log('Video URL: $videoUrl', name: 'FCMService');
-        // Navigate to content page with both slide and video
+        
+        var contentAvailable = [];
+        if (slideUrl != null) {
+          contentAvailable.add("slide");
+          // Log removed for production;
+        }
+        if (videoUrl != null) {
+          contentAvailable.add("video");
+          // Log removed for production;
+        }
+        
+        // TODO: Navigation to combined content viewer with both URLs
+        // Example: Navigator.of(context).pushNamed('/content-viewer', 
+        //          arguments: {'slideUrl': slideUrl, 'videoUrl': videoUrl});
+        
+        // For now, just show a notification
+        _showUINotification(
+          'Nội dung đã sẵn sàng',
+          'Nhấn vào để xem ${contentAvailable.join(" và ")} mới: $subject - Bài $chapter',
+          isSuccess: true,
+        );
         break;
 
       case 'generation_failed':
-        developer.log('Generation failed - Error: $error', name: 'FCMService');
-        // Show error dialog or navigate to retry page
-        break;
-
-      // Legacy support for old notification types
-      case 'video_complete':
-        developer.log('Legacy: Navigate to video', name: 'FCMService');
-        break;
-      case 'slide_ready':
-        developer.log('Legacy: Navigate to slides', name: 'FCMService');
-        break;
-      case 'new_lesson':
-        developer.log('Legacy: Navigate to lesson', name: 'FCMService');
+        // Log removed for production;
+        
+        // Show error notification
+        _showUINotification(
+          'Tạo nội dung thất bại',
+          error ?? 'Đã có lỗi xảy ra khi tạo nội dung. Vui lòng thử lại.',
+          isSuccess: false,
+        );
+        
+        // TODO: Navigation to retry screen
+        // Example: Navigator.of(context).pushNamed('/content-generation', 
+        //          arguments: {'error': error, 'retryData': {'subject': subject, 'chapter': chapter}});
         break;
 
       default:
-        developer.log('Unknown notification type: $type', name: 'FCMService');
-        // Default action - navigate to education screen or main screen
-        if (subjectId != null || chapterId != null) {
-          developer.log(
-            'Navigate to education - Subject: $subjectId, Chapter: $chapterId',
-            name: 'FCMService',
+        // Log removed for production;
+        
+        // For unknown types, just show a generic notification
+        if (subject != null || chapter != null) {
+          _showUINotification(
+            'Thông báo mới',
+            'Có thông báo mới về nội dung $subject${chapter != null ? " - Bài $chapter" : ""}',
+            isSuccess: true,
+          );
+        } else {
+          _showUINotification(
+            'Thông báo mới',
+            'Bạn có thông báo mới từ EduVision',
+            isSuccess: true,
           );
         }
     }
@@ -516,7 +633,7 @@ class FCMService {
   void setupWebMessageListener() {
     // This will be called when service worker sends message to main app
     // Note: This is a placeholder for web-specific implementation
-    developer.log('Web message listener setup (web only)', name: 'FCMService');
+    // Log removed for production;
   }
 
   /// Show local notification manually (useful for testing)
@@ -557,7 +674,10 @@ class FCMService {
         payload: data != null ? jsonEncode(data) : null,
       );
 
-      developer.log('Local notification shown manually', name: 'FCMService');
+      // Also show UI notification
+      _showUINotification(title, body, isSuccess: true);
+
+      // Log removed for production;
     } catch (e) {
       developer.log(
         'Error showing manual notification: $e',
@@ -572,7 +692,7 @@ class FCMService {
 
     try {
       await _firebaseMessaging!.subscribeToTopic(topic);
-      developer.log('Subscribed to topic: $topic', name: 'FCMService');
+      // Log removed for production;
     } catch (e) {
       developer.log(
         'Error subscribing to topic $topic: $e',
@@ -587,7 +707,7 @@ class FCMService {
 
     try {
       await _firebaseMessaging!.unsubscribeFromTopic(topic);
-      developer.log('Unsubscribed from topic: $topic', name: 'FCMService');
+      // Log removed for production;
     } catch (e) {
       developer.log(
         'Error unsubscribing from topic $topic: $e',
@@ -610,7 +730,7 @@ class FCMService {
       }
       return message;
     } catch (e) {
-      developer.log('Error getting initial message: $e', name: 'FCMService');
+      // Log removed for production;
       return null;
     }
   }
@@ -621,9 +741,9 @@ class FCMService {
 
     try {
       await _localNotifications!.cancelAll();
-      developer.log('All notifications cleared', name: 'FCMService');
+      // Log removed for production;
     } catch (e) {
-      developer.log('Error clearing notifications: $e', name: 'FCMService');
+      // Log removed for production;
     }
   }
 
@@ -638,9 +758,9 @@ class FCMService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('fcm_token');
 
-      developer.log('FCM token deleted', name: 'FCMService');
+      // Log removed for production;
     } catch (e) {
-      developer.log('Error deleting FCM token: $e', name: 'FCMService');
+      // Log removed for production;
     }
   }
 
@@ -652,7 +772,7 @@ class FCMService {
       await _firebaseMessaging!.deleteToken();
       return await _getFCMToken();
     } catch (e) {
-      developer.log('Error refreshing FCM token: $e', name: 'FCMService');
+      // Log removed for production;
       return null;
     }
   }
@@ -662,7 +782,7 @@ class FCMService {
     try {
       final token = _fcmToken ?? await _getFCMToken();
       if (token == null) {
-        developer.log('No FCM token to update', name: 'FCMService');
+        // Log removed for production;
         return false;
       }
 
@@ -690,12 +810,12 @@ class FCMService {
     try {
       final fcmToken = _fcmToken ?? await _getFCMToken();
       if (fcmToken == null) {
-        developer.log('No FCM token to update', name: 'FCMService');
+        // Log removed for production;
         return false;
       }
 
-      final response = await http.post(
-        Uri.parse('https://localhost:7258/api/authentication/fcm-token'),
+      final response = await HttpHelper.post(
+        Uri.parse('${ApiConfig.authBaseUrl}/${ApiConfig.fcmTokenEndpoint}'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $authToken',
@@ -750,25 +870,238 @@ class FCMService {
       _firebaseMessaging = null;
       _localNotifications = null;
 
-      developer.log('Force reinitializing FCM...', name: 'FCMService');
+      // Log removed for production;
       await initialize();
     } catch (e) {
-      developer.log('Force reinitialize failed: $e', name: 'FCMService');
+      // Log removed for production;
       rethrow;
     }
+  }
+
+  /// Test method để gửi FCM token lên backend và test notification
+  Future<void> testFCMTokenAndCreateSlide([int template = 1]) async {
+    try {
+      // Log removed for production;
+      
+      // Show UI notification for starting the process
+      _showUINotification(
+        'Bắt đầu tạo slide',
+        'Đang chuẩn bị tạo slide mới với mẫu $template...',
+        isSuccess: true,
+      );
+      
+      // 1. Đảm bảo có FCM token
+      final token = _fcmToken ?? await _getFCMToken();
+      if (token == null) {
+        // Log removed for production;
+        _showUINotification(
+          'Lỗi FCM Token',
+          'Không thể lấy FCM token. Vui lòng khởi động lại ứng dụng.',
+          isSuccess: false,
+        );
+        return;
+      }
+      
+      // Log removed for production;
+      
+      // 2. Gửi FCM token lên backend (nếu chưa có endpoint, cần thêm)
+      await _sendTokenToBackend(token);
+      
+      // 3. Test tạo slide để trigger notification
+      final authToken = await _getAuthToken();
+      if (authToken == null) {
+        // Log removed for production;
+        _showUINotification(
+          'Lỗi xác thực',
+          'Không tìm thấy token xác thực. Vui lòng đăng nhập lại.',
+          isSuccess: false,
+        );
+        return;
+      }
+
+      _showUINotification(
+        'Đang tạo slide',
+        'Yêu cầu tạo slide đang được gửi đến máy chủ...',
+        isSuccess: true,
+      );
+      
+      // Log all details before making the request
+      // Log removed for production;
+      // Log removed for production;
+      // Log removed for production;
+      // Log removed for production;
+      
+      // Gửi request đến API để tạo slide
+      final response = await HttpHelper.post(
+        Uri.parse('${ApiConfig.slidesBaseUrl}'),
+        headers: {
+          'accept': 'text/plain',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({
+          "subject": "GDCD",
+          "chapter": "1", 
+          "grade": 12,
+          "imageCategory": "GDCD",
+          "template": template
+        }),
+      );
+      
+      // Log removed for production;
+      // Log removed for production;
+      
+      if (response.statusCode == 202) {
+        // Log removed for production;
+        
+        // Parse response to get the promptId
+        Map<String, dynamic> responseData = jsonDecode(response.body);
+        String? promptId;
+        
+        if (responseData.containsKey('result')) {
+          promptId = responseData['result'].toString();
+          // Log removed for production;
+        }
+        
+        _showUINotification(
+          'Yêu cầu đã được chấp nhận',
+          'Máy chủ đang tạo slide. Bạn sẽ nhận được thông báo khi hoàn thành.',
+          isSuccess: true,
+        );
+
+        // Simulate notification for testing purposes
+        Future.delayed(Duration(seconds: 5), () {
+          // Simulate notification from backend for immediate feedback during development
+          showLocalNotification(
+            title: 'Slide đã sẵn sàng!',
+            body: 'Slide mẫu $template đã được tạo thành công',
+            data: {
+              'type': 'slide_generated',
+              'slideUrl': 'https://example.com/slides/sample_$template.html',
+              'subject': 'GDCD',
+              'chapter': '1',
+              'promptId': promptId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+              'template': template.toString(),
+            },
+          );
+        });
+        
+      } else {
+        // Log removed for production;
+        _showUINotification(
+          'Tạo slide thất bại',
+          'Lỗi ${response.statusCode}: Không thể tạo slide. Vui lòng thử lại sau.',
+          isSuccess: false,
+        );
+      }
+    } catch (e) {
+      // Log removed for production;
+      _showUINotification(
+        'Lỗi khi tạo slide',
+        'Đã xảy ra lỗi: ${e.toString()}',
+        isSuccess: false,
+      );
+    }
+  }
+
+  /// Gửi FCM token lên backend
+  Future<void> _sendTokenToBackend(String token) async {
+    try {
+      final authToken = await _getAuthToken();
+      if (authToken == null) {
+        // Log removed for production;
+        return;
+      }
+
+      final response = await HttpHelper.post(
+        Uri.parse('${ApiConfig.authBaseUrl}/${ApiConfig.fcmTokenEndpoint}'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({'FcmToken': token}),
+      );
+
+      // Log removed for production;
+      if (response.statusCode != 200) {
+        // Log removed for production;
+      } else {
+        // Log removed for production;
+      }
+    } catch (e) {
+      // Log removed for production;
+    }
+  }
+
+  /// Lấy auth token từ storage
+  Future<String?> _getAuthToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_token');
+    } catch (e) {
+      // Log removed for production;
+      return null;
+    }
+  }
+
+  /// Test all 4 templates
+  Future<void> testAllTemplates() async {
+    // Log removed for production;
+    
+    for (int template = 1; template <= 4; template++) {
+      // Log removed for production;
+      await testFCMTokenAndCreateSlide(template);
+      
+      // Wait a bit between requests
+      await Future.delayed(Duration(seconds: 2));
+    }
+    
+    // Log removed for production;
   }
 }
 
 /// Background message handler (must be top-level function)
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Initialize Firebase if needed
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  } catch (e) {
+    // Log removed for production;
+  }
 
   developer.log(
     'Background message received: ${message.messageId}',
     name: 'FCMService',
   );
+  // Log removed for production;
 
-  // Handle background message
-  // Note: Don't call setState or update UI here
+  // Store notification data in shared preferences for retrieval when app opens
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Store latest notification
+    await prefs.setString('latest_fcm_notification', jsonEncode({
+      'type': message.data['type'],
+      'time': DateTime.now().toIso8601String(),
+      'data': message.data,
+    }));
+    
+    // Add to notification history
+    final historyJson = prefs.getStringList('fcm_notification_history') ?? [];
+    historyJson.add(jsonEncode({
+      'type': message.data['type'],
+      'time': DateTime.now().toIso8601String(),
+      'data': message.data,
+    }));
+    
+    // Limit history to last 20 notifications
+    if (historyJson.length > 20) {
+      historyJson.removeAt(0);
+    }
+    
+    await prefs.setStringList('fcm_notification_history', historyJson);
+  } catch (e) {
+    // Log removed for production;
+  }
 }

@@ -1,12 +1,22 @@
 ﻿// video_result_screen.dart
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../models/lecture_video.dart';
 import '../services/video_service.dart';
+import '../services/fcm_service.dart';
+import '../services/api_video_service.dart';
+import '../utils/video_notification_helper.dart';
+import 'create_video_screen.dart';
 
 class VideoResultScreen extends StatefulWidget {
   final String videoId;
+  final int? remoteId; // ID for remote video from API
 
-  const VideoResultScreen({Key? key, required this.videoId}) : super(key: key);
+  const VideoResultScreen({
+    Key? key, 
+    required this.videoId, 
+    this.remoteId,
+  }) : super(key: key);
 
   @override
   State<VideoResultScreen> createState() => _VideoResultScreenState();
@@ -15,9 +25,63 @@ class VideoResultScreen extends StatefulWidget {
 class _VideoResultScreenState extends State<VideoResultScreen>
     with SingleTickerProviderStateMixin {
   final VideoService _videoService = VideoService();
+  final FCMService _fcmService = FCMService();
+  
   late Future<LectureVideo> _videoFuture;
   late AnimationController _animationController;
+  
+  // Video data from notifications
+  String? _remoteVideoUrl;
+  bool _checkingForNotifications = true;
+  
+  // Lists for dropdown options
+  final List<String> _subjects = [
+    'Toán học', 'Vật lý', 'Hóa học', 'Sinh học', 
+    'Ngữ văn', 'Lịch sử', 'Địa lý', 'Tiếng Anh', 'GDCD', 'Tin học',
+  ];
+  
+  // Danh sách chương theo môn học
+  final Map<String, List<String>> _chaptersBySubject = {
+    'Toán học': ['Đại số', 'Hình học', 'Giải tích', 'Số học', 'Xác suất thống kê'],
+    'Vật lý': ['Cơ học', 'Nhiệt học', 'Điện học', 'Quang học', 'Vật lý nguyên tử'],
+    'Hóa học': ['Hóa vô cơ', 'Hóa hữu cơ', 'Hóa phân tích', 'Hóa đại cương'],
+    'Sinh học': ['Sinh học tế bào', 'Di truyền học', 'Sinh thái học', 'Sinh lý học'],
+    'GDCD': ['Pháp luật', 'Đạo đức', 'Quyền công dân', 'Xã hội'],
+    'Lịch sử': ['Lịch sử Việt Nam', 'Lịch sử thế giới', 'Cách mạng', 'Văn minh'],
+  };
+  
+  final List<String> _grades = [
+    'Lớp 1', 'Lớp 2', 'Lớp 3', 'Lớp 4', 'Lớp 5',
+    'Lớp 6', 'Lớp 7', 'Lớp 8', 'Lớp 9',
+    'Lớp 10', 'Lớp 11', 'Lớp 12'
+  ];
+  
+  final List<String> _imageCategories = [
+    'Chân dung', 'Phong cảnh', 'Khoa học', 'Trừu tượng', 'Giáo dục'
+  ];
+  
+  final List<String> _templates = [
+    'Mẫu 1', 'Mẫu 2', 'Mẫu 3'
+  ];
 
+  // Add API video service for creating new requests
+  final ApiVideoService _apiVideoService = ApiVideoService();
+  
+  // Video creation form controllers
+  final TextEditingController _subjectController = TextEditingController();
+  final TextEditingController _chapterController = TextEditingController();
+  final TextEditingController _topicController = TextEditingController();
+  
+  // Selected values for dropdowns
+  String? _selectedSubject;
+  String? _selectedChapter;
+  String? _selectedGrade;
+  String? _selectedImageCategory;
+  String? _selectedTemplate;
+  
+  // Form visibility
+  bool _showVideoRequestForm = false;
+  
   @override
   void initState() {
     super.initState();
@@ -27,22 +91,156 @@ class _VideoResultScreenState extends State<VideoResultScreen>
       duration: const Duration(milliseconds: 1500),
     );
     _animationController.repeat(reverse: true);
+    
+    // Setup FCM for remote video
+    if (widget.remoteId != null) {
+      _checkingForNotifications = true;
+      
+      // Setup video notification helper
+      VideoNotificationHelper.setupVideoResultScreen(
+        context: context,
+        fcmService: _fcmService,
+        onVideoReady: (videoUrl) {
+          setState(() {
+            _remoteVideoUrl = videoUrl;
+            _checkingForNotifications = false;
+          });
+        },
+      );
+    } else {
+      _checkingForNotifications = false;
+    }
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _fcmService.onVideoGenerated = null;
+    // Dispose the text controllers
+    _subjectController.dispose();
+    _chapterController.dispose();
+    _topicController.dispose();
     super.dispose();
   }
 
   Future<LectureVideo> _processVideo() async {
     return await _videoService.processVideo(widget.videoId);
   }
+  
+  // Gets the available chapters based on selected subject
+  List<String> get _availableChapters {
+    if (_selectedSubject == null) return [];
+    return _chaptersBySubject[_selectedSubject] ?? [];
+  }
+  
+  // Toggle request form visibility
+  void _toggleVideoRequestForm() {
+    setState(() {
+      _showVideoRequestForm = !_showVideoRequestForm;
+    });
+  }
+  
+  // Create a new video request
+  Future<void> _createVideoRequest() async {
+    if (_validateForm()) {
+      try {
+        // Show loading indicator
+        setState(() {
+          _checkingForNotifications = true;
+        });
+        
+        // Parse grade number (remove "Lớp " prefix)
+        final int grade = int.tryParse(_selectedGrade?.replaceAll('Lớp ', '') ?? '12') ?? 12;
+        
+        // Parse template number
+        final int template = int.tryParse(_selectedTemplate?.replaceAll('Mẫu ', '') ?? '1') ?? 1;
+        
+        // Make the API call
+        final result = await _apiVideoService.createVideo(
+          subject: _selectedSubject!,
+          chapter: _selectedChapter!,
+          grade: grade,
+          imageCategory: _selectedImageCategory ?? 'Giáo dục',
+          template: template,
+        );
+        
+        // Get the generateVideoId from the API response
+        final int? generatedVideoId = result['generateVideoId'] as int?;
+        
+        if (generatedVideoId != null) {
+          // Show success message
+          VideoNotificationHelper.showNotification(
+            context,
+            'Yêu cầu tạo video đã được gửi. ID: $generatedVideoId',
+          );
+          
+          // Setup FCM to receive the notification
+          VideoNotificationHelper.setupVideoResultScreen(
+            context: context,
+            fcmService: _fcmService,
+            onVideoReady: (videoUrl) {
+              setState(() {
+                _remoteVideoUrl = videoUrl;
+                _checkingForNotifications = false;
+              });
+            },
+          );
+          
+          // Hide the form
+          setState(() {
+            _showVideoRequestForm = false;
+          });
+        }
+      } catch (e) {
+        // Show error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        
+        setState(() {
+          _checkingForNotifications = false;
+        });
+      }
+    }
+  }
+  
+  // Validate form fields
+  bool _validateForm() {
+    if (_selectedSubject == null) {
+      _showError('Vui lòng chọn môn học');
+      return false;
+    }
+    
+    if (_selectedChapter == null) {
+      _showError('Vui lòng chọn chương');
+      return false;
+    }
+    
+    if (_topicController.text.isEmpty) {
+      _showError('Vui lòng nhập chủ đề');
+      return false;
+    }
+    
+    return true;
+  }
+  
+  // Show error message
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(
+      navigationBar: CupertinoNavigationBar(
         middle: Text(
           "Kết quả video",
           style: TextStyle(
@@ -50,6 +248,14 @@ class _VideoResultScreenState extends State<VideoResultScreen>
             fontWeight: FontWeight.w600,
           ),
         ),
+        trailing: _remoteVideoUrl != null
+            ? Icon(
+                CupertinoIcons.cloud_download,
+                color: CupertinoColors.activeBlue,
+              )
+            : _checkingForNotifications
+                ? CupertinoActivityIndicator()
+                : null,
       ),
       child: SafeArea(
         child: FutureBuilder<LectureVideo>(
@@ -218,12 +424,41 @@ class _VideoResultScreenState extends State<VideoResultScreen>
   }
 
   Widget _buildSuccessState(LectureVideo video) {
+    // Check if we have a remote URL from FCM notifications
+    final hasRemoteUrl = _remoteVideoUrl != null;
+    
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Notification status indicator if waiting for remote video
+            if (_checkingForNotifications)
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                margin: EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemBlue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    CupertinoActivityIndicator(),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Đang chờ thông báo từ máy chủ...',
+                        style: TextStyle(
+                          color: CupertinoColors.systemBlue,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
             // Video preview container with animation
             TweenAnimationBuilder(
               duration: const Duration(milliseconds: 800),
@@ -250,31 +485,64 @@ class _VideoResultScreenState extends State<VideoResultScreen>
                           ),
                         ],
                       ),
-                      child: Center(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (video.videoUrl != null)
-                              Icon(
-                                CupertinoIcons.play_circle_fill,
-                                size: 64,
-                                color: CupertinoColors.activeBlue.withOpacity(
-                                  value,
+                      child: Stack(
+                        children: [
+                          // Main content
+                          Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Show remote or local video icon
+                                if (hasRemoteUrl || video.videoUrl != null)
+                                  Icon(
+                                    hasRemoteUrl 
+                                        ? CupertinoIcons.cloud_download
+                                        : CupertinoIcons.play_circle_fill,
+                                    size: 64,
+                                    color: CupertinoColors.activeBlue.withOpacity(value),
+                                  ),
+                                if ((hasRemoteUrl || video.videoUrl != null) &&
+                                    video.slideUrl != null)
+                                  const SizedBox(width: 32),
+                                if (video.slideUrl != null)
+                                  Icon(
+                                    CupertinoIcons.rectangle_fill_on_rectangle_fill,
+                                    size: 64,
+                                    color: CupertinoColors.systemBlue.withOpacity(value),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          
+                          // Remote video badge
+                          if (hasRemoteUrl)
+                            Positioned(
+                              top: 10,
+                              right: 10,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: CupertinoColors.activeGreen,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(CupertinoIcons.cloud, color: CupertinoColors.white, size: 14),
+                                    SizedBox(width: 4),
+                                    Text(
+                                                                            'Trực tuyến',
+                                      style: TextStyle(
+                                        color: CupertinoColors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            if (video.videoUrl != null &&
-                                video.slideUrl != null)
-                              const SizedBox(width: 32),
-                            if (video.slideUrl != null)
-                              Icon(
-                                CupertinoIcons.rectangle_fill_on_rectangle_fill,
-                                size: 64,
-                                color: CupertinoColors.systemBlue.withOpacity(
-                                  value,
-                                ),
-                              ),
-                          ],
-                        ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
@@ -424,22 +692,20 @@ class _VideoResultScreenState extends State<VideoResultScreen>
 
             const SizedBox(height: 16),
 
+            // Create new video request button and form
             Row(
               children: [
                 Expanded(
                   child: CupertinoButton.filled(
-                    onPressed: () {
-                      // Tạo video mới
-                      Navigator.pop(context);
-                    },
+                    onPressed: _toggleVideoRequestForm,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(CupertinoIcons.add),
+                      children: [
+                        Icon(_showVideoRequestForm ? CupertinoIcons.xmark : CupertinoIcons.add),
                         SizedBox(width: 6),
                         Text(
-                          "Tạo mới",
+                          _showVideoRequestForm ? "Hủy" : "Tạo video mới",
                           style: TextStyle(
                             fontFamily: ".SF Pro Text",
                             fontWeight: FontWeight.w500,
@@ -451,6 +717,9 @@ class _VideoResultScreenState extends State<VideoResultScreen>
                 ),
               ],
             ),
+            
+            // Video request form
+            if (_showVideoRequestForm) _buildVideoRequestForm(),
 
             const SizedBox(height: 16),
 
@@ -584,6 +853,251 @@ class _VideoResultScreenState extends State<VideoResultScreen>
                 fontSize: 16,
                 color: CupertinoColors.black,
                 fontFamily: ".SF Pro Text",
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Build the video request form
+  Widget _buildVideoRequestForm() {
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemGrey6,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Form title
+          Text(
+            'Tạo video mới',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              fontFamily: ".SF Pro Display",
+            ),
+          ),
+          SizedBox(height: 16),
+          
+          // Subject dropdown
+          Text(
+            'Môn học',
+            style: TextStyle(
+              fontFamily: ".SF Pro Text",
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: CupertinoColors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: CupertinoColors.systemGrey4),
+            ),
+            child: DropdownButton<String>(
+              value: _selectedSubject,
+              isExpanded: true,
+              underline: SizedBox(),
+              hint: Text('Chọn môn học'),
+              items: _subjects.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedSubject = newValue;
+                  _selectedChapter = null; // Reset chapter when subject changes
+                });
+              },
+            ),
+          ),
+          SizedBox(height: 16),
+          
+          // Chapter dropdown
+          Text(
+            'Chương',
+            style: TextStyle(
+              fontFamily: ".SF Pro Text",
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: CupertinoColors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: CupertinoColors.systemGrey4),
+            ),
+            child: DropdownButton<String>(
+              value: _selectedChapter,
+              isExpanded: true,
+              underline: SizedBox(),
+              hint: Text(_selectedSubject == null ? 'Chọn môn học trước' : 'Chọn chương'),
+              items: _availableChapters.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: _selectedSubject == null ? null : (newValue) {
+                setState(() {
+                  _selectedChapter = newValue;
+                });
+              },
+            ),
+          ),
+          SizedBox(height: 16),
+          
+          // Topic field
+          Text(
+            'Chủ đề',
+            style: TextStyle(
+              fontFamily: ".SF Pro Text",
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 8),
+          CupertinoTextField(
+            controller: _topicController,
+            placeholder: 'Nhập chủ đề video',
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: CupertinoColors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: CupertinoColors.systemGrey4),
+            ),
+          ),
+          SizedBox(height: 16),
+          
+          // Grade dropdown
+          Text(
+            'Lớp',
+            style: TextStyle(
+              fontFamily: ".SF Pro Text",
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: CupertinoColors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: CupertinoColors.systemGrey4),
+            ),
+            child: DropdownButton<String>(
+              value: _selectedGrade,
+              isExpanded: true,
+              underline: SizedBox(),
+              hint: Text('Chọn lớp'),
+              items: _grades.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedGrade = newValue;
+                });
+              },
+            ),
+          ),
+          SizedBox(height: 16),
+          
+          // Image category dropdown
+          Text(
+            'Thể loại hình ảnh',
+            style: TextStyle(
+              fontFamily: ".SF Pro Text",
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: CupertinoColors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: CupertinoColors.systemGrey4),
+            ),
+            child: DropdownButton<String>(
+              value: _selectedImageCategory,
+              isExpanded: true,
+              underline: SizedBox(),
+              hint: Text('Chọn thể loại hình ảnh'),
+              items: _imageCategories.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedImageCategory = newValue;
+                });
+              },
+            ),
+          ),
+          SizedBox(height: 16),
+          
+          // Template dropdown
+          Text(
+            'Mẫu thiết kế',
+            style: TextStyle(
+              fontFamily: ".SF Pro Text",
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: CupertinoColors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: CupertinoColors.systemGrey4),
+            ),
+            child: DropdownButton<String>(
+              value: _selectedTemplate,
+              isExpanded: true,
+              underline: SizedBox(),
+              hint: Text('Chọn mẫu thiết kế'),
+              items: _templates.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedTemplate = newValue;
+                });
+              },
+            ),
+          ),
+          SizedBox(height: 24),
+          
+          // Submit button
+          SizedBox(
+            width: double.infinity,
+            child: CupertinoButton(
+              color: CupertinoColors.activeBlue,
+              onPressed: _createVideoRequest,
+              child: Text(
+                'Gửi yêu cầu tạo video',
+                style: TextStyle(
+                  fontFamily: ".SF Pro Text",
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),

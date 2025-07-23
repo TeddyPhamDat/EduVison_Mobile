@@ -4,6 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../config/api_config.dart';
 
+
+// Import HttpHelper from auth_service.dart
+import 'auth_service.dart' show HttpHelper;
+
 class EducationService {
   // Singleton pattern
   static final EducationService _instance = EducationService._internal();
@@ -52,9 +56,13 @@ class EducationService {
         );
       }
 
-      // Make API call
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/Education/subjects'),
+      // Sử dụng URL cho máy ảo Android
+      final url = '${ApiConfig.educationBaseUrl}/${ApiConfig.subjectsEndpoint}';
+
+
+      // Make API call with HttpHelper for SSL bypass
+      final response = await HttpHelper.get(
+        Uri.parse(url),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -85,7 +93,7 @@ class EducationService {
         );
       }
     } catch (e) {
-      print('Error in getSubjects: $e');
+      // Error handling is done via returned response
       throw Exception('Không thể lấy danh sách môn học: $e');
     }
   }
@@ -126,11 +134,14 @@ class EducationService {
         );
       }
 
-      // Make API call
-      final response = await http.get(
-        Uri.parse(
-          '${ApiConfig.baseUrl}/api/Education/chapters?subject=$subject&grade=$grade',
-        ),
+      // Sử dụng URL cho máy ảo Android
+      final url =
+          '${ApiConfig.educationBaseUrl}/${ApiConfig.chaptersEndpoint}?subject=$subject&grade=$grade';
+
+
+      // Make API call with SSL bypass for Android emulator
+      final response = await HttpHelper.get(
+        Uri.parse(url),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -161,7 +172,7 @@ class EducationService {
         );
       }
     } catch (e) {
-      print('Error in getChapters: $e');
+      // Error handling is done via returned response
       throw Exception('Không thể lấy danh sách bài học: $e');
     }
   }
@@ -193,8 +204,6 @@ class EducationService {
         'mode': mode,
       };
 
-      print('Generating content with request: $requestBody');
-
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/education/videos'),
         headers: {
@@ -204,9 +213,6 @@ class EducationService {
         },
         body: jsonEncode(requestBody),
       );
-
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 202) {
         // Backend returns 202 Accepted for async processing
@@ -224,7 +230,6 @@ class EducationService {
         );
       }
     } catch (e) {
-      print('Error in generateContent: $e');
       throw Exception('Không thể tạo nội dung: $e');
     }
   }
@@ -254,13 +259,11 @@ class EducationService {
         'grade': grade, // Send as number, not string
         'imageCategory': imageCategory,
         'template': template,
-        'mode': mode,
+        
       };
 
-      print('Generating slides with request: $requestBody');
-
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/education/slides'),
+        Uri.parse('${ApiConfig.baseUrl}/api/slides'),
         headers: {
           'accept': 'text/plain', // Match backend expectation
           'Authorization': 'Bearer $token',
@@ -268,9 +271,6 @@ class EducationService {
         },
         body: jsonEncode(requestBody),
       );
-
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 202) {
         // Backend returns 202 Accepted for async processing
@@ -288,7 +288,6 @@ class EducationService {
         );
       }
     } catch (e) {
-      print('Error in generateSlides: $e');
       throw Exception('Không thể tạo slides: $e');
     }
   }
@@ -311,8 +310,7 @@ class EducationService {
         },
       );
 
-      print('Get my slides response: ${response.statusCode}');
-      print('Response body: ${response.body}');
+
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
@@ -333,7 +331,6 @@ class EducationService {
         throw Exception('HTTP ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      print('Error getting slides: $e');
       rethrow;
     }
   }
@@ -356,8 +353,7 @@ class EducationService {
         },
       );
 
-      print('Get my videos response: ${response.statusCode}');
-      print('Response body: ${response.body}');
+
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
@@ -378,7 +374,6 @@ class EducationService {
         throw Exception('HTTP ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      print('Error getting videos: $e');
       rethrow;
     }
   }
@@ -391,8 +386,13 @@ class EducationService {
         throw Exception('User not authenticated');
       }
 
+      // Sử dụng URL API production
+      final url = '${ApiConfig.slidesBaseUrl}?page=1&pageSize=10';
+
+
+      // Sử dụng http.get thay vì HttpHelper vì không cần bỏ qua lỗi SSL với API production
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/education/slides'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -403,7 +403,9 @@ class EducationService {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
 
         if (responseData['code'] == 200 && responseData['result'] != null) {
-          final List<dynamic> slidesData = responseData['result'];
+          // API trả về format: result -> data -> [slide1, slide2, ...]
+          final Map<String, dynamic> result = responseData['result'];
+          final List<dynamic> slidesData = result['data'] ?? [];
           return slidesData
               .map((slide) => Map<String, dynamic>.from(slide))
               .toList();
@@ -416,7 +418,6 @@ class EducationService {
         throw Exception('HTTP ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      print('Error getting user slides: $e');
       rethrow;
     }
   }
@@ -429,8 +430,12 @@ class EducationService {
         throw Exception('User not authenticated');
       }
 
+      // Sử dụng URL API production
+      final url = '${ApiConfig.videosBaseUrl}?page=1&pageSize=10';
+
+      // Sử dụng http.get thay vì HttpHelper vì không cần bỏ qua lỗi SSL với API production
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/education/videos'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -441,7 +446,9 @@ class EducationService {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
 
         if (responseData['code'] == 200 && responseData['result'] != null) {
-          final List<dynamic> videosData = responseData['result'];
+          // API trả về format: result -> data -> [video1, video2, ...]
+          final Map<String, dynamic> result = responseData['result'];
+          final List<dynamic> videosData = result['data'] ?? [];
           return videosData
               .map((video) => Map<String, dynamic>.from(video))
               .toList();
@@ -454,7 +461,6 @@ class EducationService {
         throw Exception('HTTP ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      print('Error getting user videos: $e');
       rethrow;
     }
   }
@@ -467,7 +473,6 @@ class EducationService {
 
       return {'slides': slides, 'videos': videos};
     } catch (e) {
-      print('Error getting user content: $e');
       throw Exception('Error fetching user content: $e');
     }
   }

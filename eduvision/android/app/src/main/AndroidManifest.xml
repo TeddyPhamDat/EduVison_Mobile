@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Thêm quyền Internet cho Google Sign-In -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Thêm quyền truy cập network state để kiểm tra kết nối -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    
     <application
         android:label="eduvision"
         android:name="${applicationName}"

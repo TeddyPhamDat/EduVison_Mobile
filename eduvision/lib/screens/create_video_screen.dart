@@ -1,5 +1,9 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../services/video_service.dart';
+import '../services/fcm_service.dart';
+import '../services/api_video_service.dart';
+import '../utils/video_notification_helper.dart';
 import 'video_result_screen.dart';
 
 class CreateVideoScreen extends StatefulWidget {
@@ -15,6 +19,9 @@ class _CreateVideoScreenState extends State<CreateVideoScreen> {
   final _topicController = TextEditingController();
   
   bool _isLoading = false;
+  bool _isAwaitingNotification = false;
+  int? _generatedVideoId;
+  
   String? _selectedSubject;
   String? _selectedChapter;
   String? _selectedGrade;
@@ -23,6 +30,8 @@ class _CreateVideoScreenState extends State<CreateVideoScreen> {
   String? _selectedMode;
   
   final VideoService _videoService = VideoService();
+  final ApiVideoService _apiVideoService = ApiVideoService();
+  final FCMService _fcmService = FCMService();
   
   // Danh sách môn học
   final List<String> _subjects = [
@@ -57,12 +66,61 @@ class _CreateVideoScreenState extends State<CreateVideoScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _setupFCMHandlers();
+  }
+
+  @override
   void dispose() {
     _subjectController.dispose();
     _chapterController.dispose();
     _topicController.dispose();
+    _clearFCMHandlers();
     super.dispose();
   }
+  
+  void _setupFCMHandlers() {
+    // Use our helper to set up FCM handlers
+    VideoNotificationHelper.setupCreateVideoScreen(
+      context: context,
+      fcmService: _fcmService,
+      onSuccess: () {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _isAwaitingNotification = false;
+          });
+          
+          // Navigate to result if we have an ID
+          if (_generatedVideoId != null) {
+            Navigator.push(
+              context,
+              CupertinoPageRoute(
+                builder: (context) => VideoResultScreen(videoId: _generatedVideoId.toString()),
+              ),
+            );
+          }
+        }
+      },
+      onError: (error) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _isAwaitingNotification = false;
+          });
+        }
+      },
+    );
+  }
+  
+  void _clearFCMHandlers() {
+    // Clear handlers when leaving screen to avoid memory leaks
+    _fcmService.onVideoGenerated = null;
+    _fcmService.onGenerationFailed = null;
+  }
+  
+  // We've replaced these methods with VideoNotificationHelper
 
   List<String> get _availableChapters {
     if (_selectedSubject == null) return [];
@@ -76,8 +134,13 @@ class _CreateVideoScreenState extends State<CreateVideoScreen> {
 
     setState(() {
       _isLoading = true;
-    });    try {
-      final video = await _videoService.createVideo(
+      _isAwaitingNotification = false;
+      _generatedVideoId = null;
+    });
+    
+    try {
+      // First create a local record for immediate feedback
+      final localVideo = await _videoService.createVideo(
         subject: _selectedSubject!,
         chapter: _selectedChapter!,
         topic: _topicController.text.trim(),
@@ -86,17 +149,105 @@ class _CreateVideoScreenState extends State<CreateVideoScreen> {
         template: _selectedTemplate,
         mode: _selectedMode,
       );
-
-      if (mounted) {
-        Navigator.push(
-          context,
-          CupertinoPageRoute(
-            builder: (context) => VideoResultScreen(videoId: video.id),
-          ),
+      
+      // Then make the API call for real video generation
+      try {
+        // Parse grade number (remove "Lớp " prefix)
+        final int grade = int.tryParse(_selectedGrade?.replaceAll('Lớp ', '') ?? '12') ?? 12;
+        
+        // Parse template number (remove "Mẫu " prefix)
+        final int template = _selectedTemplate == 'Mẫu cơ bản' 
+            ? 1 
+            : _selectedTemplate == 'Mẫu chuyên nghiệp' 
+                ? 2 
+                : 3;
+        
+        // Make the API call
+        final result = await _apiVideoService.createVideo(
+          subject: _selectedSubject!,
+          chapter: _selectedChapter!,
+          grade: grade,
+          imageCategory: _selectedImageCategory ?? 'GDCD',
+          template: template,
         );
+        
+        // Get the generateVideoId from the API response
+        _generatedVideoId = result['generateVideoId'] as int?;
+        
+        if (_generatedVideoId != null) {
+          
+          // Show waiting message with FCM info
+          VideoNotificationHelper.showNotification(
+            context,
+            'Đang tạo video... Bạn sẽ nhận được thông báo khi hoàn tất.',
+          );
+          
+          setState(() {
+            _isAwaitingNotification = true;
+          });
+          
+          // Navigate to result screen to show progress
+          if (mounted) {
+            Navigator.push(
+              context,
+              CupertinoPageRoute(
+                builder: (context) => VideoResultScreen(
+                  videoId: localVideo.id,
+                  remoteId: _generatedVideoId,
+                ),
+              ),
+            );
+          }
+        } else {
+          // No video ID returned, just use local video
+          if (mounted) {
+            VideoNotificationHelper.showNotification(
+              context,
+              'Không nhận được ID từ máy chủ. Sử dụng video cục bộ.',
+              isError: true,
+            );
+            
+            setState(() {
+              _isLoading = false;
+            });
+            
+            Navigator.push(
+              context,
+              CupertinoPageRoute(
+                builder: (context) => VideoResultScreen(videoId: localVideo.id),
+              ),
+            );
+          }
+        }
+      } catch (apiError) {
+        
+        // Still navigate to local video since we have it
+        if (mounted) {
+          VideoNotificationHelper.showNotification(
+            context,
+            'Lỗi API: ${apiError.toString()}. Sử dụng video cục bộ.',
+            isError: true,
+          );
+          
+          setState(() {
+            _isLoading = false;
+          });
+          
+          Navigator.push(
+            context,
+            CupertinoPageRoute(
+              builder: (context) => VideoResultScreen(videoId: localVideo.id),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isAwaitingNotification = false;
+        });
+        
         showCupertinoDialog(
           context: context,
           builder: (context) => CupertinoAlertDialog(

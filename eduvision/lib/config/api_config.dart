@@ -1,8 +1,38 @@
+// Define API environments
+enum ApiEnvironment {
+  development,
+  testing,
+  production
+}
+
 class ApiConfig {
-  // Backend URLs
-  static const String baseUrl =
-      'https://localhost:7258'; // Thay đổi theo backend của bạn
-  static const String authBaseUrl = '$baseUrl/api/authentication';
+  // Backend environment (change this when switching environments)
+  static const ApiEnvironment environment = ApiEnvironment.production;
+  
+  // Base URL configuration - will automatically choose the right one based on environment
+  static String get baseUrl => _getBaseUrl();
+  
+  // Auth API base URL
+  static String get authBaseUrl => '$baseUrl/api/authentication';
+  
+  // Education API base URL
+  static String get educationBaseUrl => '$baseUrl/api/education';
+  
+  // Media API base URLs
+  static String get slidesBaseUrl => '$baseUrl/api/slides';
+  static String get videosBaseUrl => '$baseUrl/api/videos';
+  
+  // Returns the appropriate base URL based on current environment setting
+  static String _getBaseUrl() {
+    switch (environment) {
+      case ApiEnvironment.production:
+        return 'https://eduvision-bsg0f8eqhnbwavbv.southeastasia-01.azurewebsites.net';
+      case ApiEnvironment.development:
+        return 'https://eduvision-bsg0f8eqhnbwavbv.southeastasia-01.azurewebsites.net'; // Now using production URL for all environments
+      case ApiEnvironment.testing:
+        return 'https://eduvision-bsg0f8eqhnbwavbv.southeastasia-01.azurewebsites.net';
+    }
+  }
 
   // API Endpoints
   static const String loginEndpoint = 'login';
@@ -17,7 +47,9 @@ class ApiConfig {
 
   // Google OAuth Configuration
   static const String googleClientId =
-      '413334004170-dk2csovpjrnmsthqqtb2ad6iseh0n4bt.apps.googleusercontent.com';
+      '859564462424-a81d1ieeimchlh52a2mcmdriip828ju2.apps.googleusercontent.com'; // Web client ID
+  static const String googleAndroidClientId =
+      '859564462424-o8iufugaok7ap1t0mrqg31k85odp4icr.apps.googleusercontent.com'; // Android client ID
 
   // Request timeouts
   static const Duration requestTimeout = Duration(seconds: 30);
@@ -36,4 +68,11 @@ class ApiConfig {
 
   // Token refresh configuration
   static const Duration tokenRefreshThreshold = Duration(minutes: 5);
+
+  // Education API endpoints
+  static const String getSlidesEndpoint = 'slides';
+  static const String getVideosEndpoint = 'videos';
+  static const String generateVideoEndpoint = 'videos';
+  static const String subjectsEndpoint = 'subjects';
+  static const String chaptersEndpoint = 'chapters';
 }

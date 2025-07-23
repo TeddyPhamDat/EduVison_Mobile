@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:developer' as developer;
 import '../services/education_service.dart';
+import 'content_viewer_screen.dart';
 
 class ContentHistoryScreen extends StatefulWidget {
   const ContentHistoryScreen({Key? key}) : super(key: key);
@@ -46,15 +48,106 @@ class _ContentHistoryScreenState extends State<ContentHistoryScreen> {
 
   Future<void> _openUrl(String url) async {
     try {
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        _showErrorMessage('Không thể mở URL: $url');
+      developer.log(
+        'Attempting to open URL: $url',
+        name: 'ContentHistoryScreen',
+      );
+
+      // Xử lý URL từ Azure Blob Storage (vấn đề bạn đang gặp)
+      String processedUrl = url;
+      String title = 'Nội dung';
+
+      // Nếu URL đến từ Azure Blob Storage và là file HTML
+      if (url.contains('blob.core.windows.net') && url.endsWith('.html')) {
+        developer.log(
+          'Processing Azure Blob Storage URL for HTML file',
+          name: 'ContentHistoryScreen',
+        );
+        // Thêm một query parameter để đảm bảo trình duyệt hiểu đó là trang HTML
+        if (!url.contains('?')) {
+          processedUrl = '$url?view=html';
+        }
+        title = 'Slides';
+      } else if (url.contains('video')) {
+        title = 'Video';
       }
+
+      final uri = Uri.parse(processedUrl);
+      developer.log('Parsed URI: $uri', name: 'ContentHistoryScreen');
+
+      // Thử phương pháp 1: Mở WebView trong ứng dụng (phương pháp đáng tin cậy nhất)
+      _openInBuiltInWebView(processedUrl, title);
+
+      /* 
+      // Phương pháp 2: Sử dụng URL Launcher (có thể không hoạt động với Azure Blob Storage)
+      if (await canLaunchUrl(uri)) {
+        developer.log('Can launch URL, attempting to open...', name: 'ContentHistoryScreen');
+        
+        // Thử mở trong trình duyệt bên trong ứng dụng trước
+        bool launched = false;
+        try {
+          launched = await launchUrl(
+            uri, 
+            mode: LaunchMode.inAppWebView,
+            webViewConfiguration: const WebViewConfiguration(
+              enableJavaScript: true,
+              enableDomStorage: true,
+            ),
+          );
+          developer.log('InAppWebView launch result: $launched', name: 'ContentHistoryScreen');
+        } catch (webViewError) {
+          developer.log('InAppWebView error: $webViewError', name: 'ContentHistoryScreen');
+          launched = false;
+        }
+        
+        if (!launched) {
+          // Nếu không mở được bằng InAppWebView, thử dùng trình duyệt mặc định
+          developer.log('Falling back to external browser', name: 'ContentHistoryScreen');
+          launched = await launchUrl(
+            uri, 
+            mode: LaunchMode.externalApplication,
+          );
+          
+          if (!launched) {
+            // Nếu vẫn không được, thử mở bằng chế độ platformDefault
+            developer.log('Falling back to platform default', name: 'ContentHistoryScreen');
+            launched = await launchUrl(uri, mode: LaunchMode.platformDefault);
+          }
+        }
+        
+        if (!launched) {
+          // Nếu tất cả các phương pháp đều thất bại, mở WebView tùy chỉnh
+          _openInBuiltInWebView(processedUrl, title);
+        }
+      } else {
+        developer.log('Cannot launch URL: $url', name: 'ContentHistoryScreen');
+        // Thử dùng WebView tùy chỉnh
+        _openInBuiltInWebView(processedUrl, title);
+      }
+      */
     } catch (e) {
+      developer.log(
+        'Exception when opening URL: $e',
+        name: 'ContentHistoryScreen',
+      );
       _showErrorMessage('Lỗi khi mở URL: $e');
     }
+  }
+
+  void _openInBuiltInWebView(String url, String title) {
+    developer.log(
+      'Opening in built-in WebView: $url',
+      name: 'ContentHistoryScreen',
+    );
+    Navigator.of(context).push(
+      CupertinoPageRoute(
+        builder: (context) => ContentViewerScreen(
+          url: url, 
+          title: title,
+          contentType: _selectedTab == 0 ? 'slide' : 'video',
+        ),
+      ),
+    );
   }
 
   void _showErrorMessage(String message) {
@@ -73,26 +166,34 @@ class _ContentHistoryScreenState extends State<ContentHistoryScreen> {
     );
   }
 
-  String _getStatusColor(String status) {
+  String _getStatusColor(String? status) {
+    if (status == null) return 'info';
+    
     switch (status.toLowerCase()) {
       case 'completed':
         return 'success';
       case 'failed':
         return 'error';
       case 'processing':
+      case 'in progress':
+      case 'pending':
         return 'warning';
       default:
         return 'info';
     }
   }
 
-  String _getStatusText(String status) {
+  String _getStatusText(String? status) {
+    if (status == null) return 'Không xác định';
+    
     switch (status.toLowerCase()) {
       case 'completed':
         return 'Hoàn thành';
       case 'failed':
         return 'Thất bại';
       case 'processing':
+      case 'in progress':
+      case 'pending':
         return 'Đang xử lý';
       default:
         return status;
@@ -194,8 +295,12 @@ class _ContentHistoryScreenState extends State<ContentHistoryScreen> {
     final String statusText = _getStatusText(status);
     final String title = content['promptContent'] ?? 'Untitled';
     final String type = content['type'] ?? '';
-    final String url = content['url'] ?? '';
-    final int id = content['slideId'] ?? content['videoId'] ?? 0;
+    final String url = content['url'] ?? content['videoUrl'] ?? '';
+    final int id =
+        content['slideId'] ??
+        content['generateVideoId'] ??
+        content['videoId'] ??
+        0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
